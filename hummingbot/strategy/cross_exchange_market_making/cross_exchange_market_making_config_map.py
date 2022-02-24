@@ -103,6 +103,7 @@ cross_exchange_market_making_config_map = {
         validator=validate_maker_market_trading_pair,
         on_validated=update_oracle_settings
     ),
+
     "taker_market_trading_pair": ConfigVar(
         key="taker_market_trading_pair",
         prompt=taker_trading_pair_prompt,
@@ -126,7 +127,7 @@ cross_exchange_market_making_config_map = {
     ),
     "min_order_amount": ConfigVar(
         key="min_order_amount",
-        prompt="What is the minimum order amount required for bid or ask orders?",
+        prompt="What is the minimum order amount required for bid or ask orders? >>> ",
         prompt_on_new=True,
         type_str="decimal",
         validator=lambda v: validate_decimal(v, Decimal("0"), inclusive=False),
@@ -135,14 +136,6 @@ cross_exchange_market_making_config_map = {
         key="adjust_order_enabled",
         prompt="Do you want to enable adjust order? (Yes/No) >>> ",
         default=True,
-        type_str="bool",
-        validator=validate_bool,
-        required_if=lambda: False,
-    ),
-    "top_depth_bias_switch": ConfigVar(
-        key="top_depth_bias_switch",
-        prompt="When enabled the price set on the maker side shall be equal to the top depth tolerance price when closer to the mid price than the min profitability calc (Yes/No) >>> ",
-        default=False,
         type_str="bool",
         validator=validate_bool,
         required_if=lambda: False,
@@ -173,6 +166,22 @@ cross_exchange_market_making_config_map = {
         required_if=lambda: False,
         validator=lambda v: validate_decimal(v, min_value=0, inclusive=False)
     ),
+
+
+    "cancel_order_timer": ConfigVar(
+        key="cancel_order_timer",
+        prompt="Do you want to cancel your orders every x seconds as a safety? >>> ",
+        default= True,
+        type_str="bool",
+    ),
+
+    "cancel_order_timer_seconds": ConfigVar(
+        key="cancel_order_timer_seconds",
+        prompt="Cancel all orders once every x seconds >>> ",
+        default= 1800,
+        type_str="float",
+    ),
+
     "top_depth_tolerance": ConfigVar(
         key="top_depth_tolerance",
         prompt=top_depth_tolerance_prompt,
@@ -189,6 +198,66 @@ cross_exchange_market_making_config_map = {
         required_if=lambda: False,
         validator=lambda v: validate_decimal(v, min_value=0, inclusive=True)
     ),
+
+    "triangular_arbitrage":
+    ConfigVar(key="triangular_arbitrage",
+              prompt="Do you want to do triangulair arbitrage if two quote assets are different? True/False >>> ",
+              type_str="bool",
+              default=False,
+              validator=lambda v: validate_bool(v),
+              prompt_on_new=True,
+              ),
+
+    "triangular_arbitrage_pair":
+    ConfigVar(key="triangular_arbitrage_pair",
+              prompt="If triangulair arbitrage is true -> what pair does this need to be on the maker market? e.g. Maker: SHR-BTC,  Taker: SHR-USDT, triangular_arbitrage_pair = BTC-USDT >>> ",
+              default="ETH-USDT",
+              prompt_on_new=True,
+              ),
+
+    "triangular_switch":
+    ConfigVar(key="triangular_switch",
+              prompt="True if maker has a quote asset like BTC or ETH, False if maker quote asset is USDT (when triangular_arbitrage is enabled ) >>> ",
+              type_str="bool",
+              default="True",
+              validator=lambda v: validate_bool(v),
+              prompt_on_new=True,
+              ),
+
+
+    "keep_target_balance":
+        ConfigVar(key="keep_target_balance",
+                  prompt="Do you want to keep a certain target_balance, next questions are for these settings True/False >>> ",
+                  type_str="bool",
+                  default=False,
+                  validator=lambda v: validate_bool(v),
+                  prompt_on_new=True,
+                  ),
+
+    "target_base_balance":
+        ConfigVar(key="target_base_balance",
+                  prompt="target_base_balance >>> ",
+                  type_str="decimal",
+                  default=1,
+                  prompt_on_new=True,
+                  ),
+
+    "slippage_buffer_fix":
+        ConfigVar(key="slippage_buffer_fix",
+                  prompt="slippage_buffer_fix >>> ",
+                  default=2,
+                  type_str="decimal",
+                  prompt_on_new=True,
+                  ),
+
+    "waiting_time":
+    ConfigVar(key="waiting_time",
+              prompt="waiting_time >>> ",
+              default=3,
+              type_str="decimal",
+              prompt_on_new=True,
+              ),
+
     "anti_hysteresis_duration": ConfigVar(
         key="anti_hysteresis_duration",
         prompt="What is the minimum time interval you want limit orders to be adjusted? (in seconds) >>> ",
@@ -197,20 +266,50 @@ cross_exchange_market_making_config_map = {
         required_if=lambda: False,
         validator=lambda v: validate_decimal(v, min_value=0, inclusive=False)
     ),
+
+    "filled_order_delay": ConfigVar(
+        key="filled_order_delay",
+        prompt="Do you want to wait x amount of seconds after an order is filled to place new orders >>> ",
+        type_str="bool",
+        prompt_on_new=True,
+        default=True
+    ),
+
+
+    "filled_order_delay_seconds": ConfigVar(
+        key="filled_order_delay_seconds",
+        prompt="How long do you want to wait before placing the next order if your order gets filled (in seconds)? >>> ",
+        default=60,
+        type_str="float",
+        prompt_on_new=True
+    ),
+
     "order_size_taker_volume_factor": ConfigVar(
         key="order_size_taker_volume_factor",
         prompt="What percentage of hedge-able volume would you like to be traded on the taker market? "
                "(Enter 1 to indicate 1%) >>> ",
-        default=25,
+        default=Decimal("95.0"),
+        type_str="decimal",
+        required_if=lambda: False,
+        validator=lambda v: validate_decimal(v, Decimal(0), Decimal(100), inclusive=True)
+    ),
+
+    "order_size_maker_balance_factor": ConfigVar(
+        key="order_size_maker_balance_factor",
+        prompt="What percentage of asset balance would you like to use for determine the order size for the maker exchange? "
+               "(Enter 1 to indicate 1%) >>> ",
+        default=Decimal("95.0"),
         type_str="decimal",
         required_if=lambda: False,
         validator=lambda v: validate_decimal(v, Decimal(0), Decimal(100), inclusive=False)
     ),
+
+
     "order_size_taker_balance_factor": ConfigVar(
         key="order_size_taker_balance_factor",
         prompt="What percentage of asset balance would you like to use for hedging trades on the taker market? "
                "(Enter 1 to indicate 1%) >>> ",
-        default=Decimal("99.5"),
+        default=Decimal("95.0"),
         type_str="decimal",
         required_if=lambda: False,
         validator=lambda v: validate_decimal(v, Decimal(0), Decimal(100), inclusive=False)
@@ -257,12 +356,5 @@ cross_exchange_market_making_config_map = {
         default=Decimal("5"),
         type_str="decimal",
         validator=lambda v: validate_decimal(v, Decimal(0), Decimal(100), inclusive=True)
-    ),
-    "volatility_buffer_size": ConfigVar(
-        key="volatility_buffer_size",
-        prompt="The period in seconds to calulate volatility over: ",
-        type_str="int",
-        default=120,
-        prompt_on_new=True
-    ),
+    )
 }

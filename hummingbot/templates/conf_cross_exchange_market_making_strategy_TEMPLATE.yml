@@ -2,7 +2,7 @@
 ###   Cross exchange market making strategy config   ###
 ########################################################
 
-template_version: 6
+template_version: 5
 strategy: null
 
 # The following configuations are only required for the
@@ -45,6 +45,9 @@ adjust_order_enabled: null
 # ignoring dust orders on top of the order book
 top_depth_tolerance: null
 
+# A percentage to be applied to the order amount when calculating the taker price,
+top_depth_tolerance_taker: null
+
 # An amount in seconds, which is the minimum amount of time interval between adjusting limit order prices
 anti_hysteresis_duration: null
 
@@ -75,10 +78,38 @@ taker_to_maker_base_conversion_rate: null
 taker_to_maker_quote_conversion_rate: null
 
 # A buffer for which to adjust order price for higher chance of the order getting filled.
-# Since we hedge on markets a slippage is acceptable rather than having the transaction get rejected.
-# The submitted order price will be adjusted higher (by percentage value) for buy orders
-# and lower for sell orders. (Enter 1 for 1%)
+# Since we hedge on marktes a slippage is acceptable rather having the transaction get rejected.
+# The submitted order price will be adjust higher (by percentage value) for buy order
+# and lower for sell order. (Enter 1 for 1%)
 slippage_buffer: null
+
+# Min order amount required to place a trade on bid or ask sides
+min_order_amount: null
+
+target_base_balance: null
+
+slippage_buffer_fix: null
+
+waiting_time: null
+
+keep_target_balance: null
+
+triangular_arbitrage: null
+
+triangular_arbitrage_pair: null
+
+cancel_order_timer: null
+
+cancel_order_timer_seconds: null
+
+filled_order_delay: null
+
+filled_order_delay_seconds: null
+
+order_size_maker_balance_factor: null
+
+triangular_switch: null
+
 
 # For more detailed information, see:
 # https://docs.hummingbot.io/strategies/cross-exchange-market-making/#configuration-parameters

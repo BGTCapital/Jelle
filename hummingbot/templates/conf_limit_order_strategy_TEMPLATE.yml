@@ -1,0 +1,10 @@
+template_version: 1
+
+maker_market: null
+taker_market: null
+min_order_amount: null
+maker_trading_pair: null
+taker_trading_pair: null
+target_base_balance: null
+slippage_buffer_fix: null
+waiting_time: null

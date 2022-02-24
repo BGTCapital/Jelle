@@ -1,40 +1,36 @@
-import aiohttp
 import asyncio
 import json
 import logging
 import time
-
 from collections import namedtuple
 from decimal import Decimal
 from enum import Enum
 from typing import (
+    Any,
+    AsyncIterable,
     Dict,
     List,
     Optional,
-    Any,
-    AsyncIterable,
 )
 
+import aiohttp
+
 from hummingbot.connector.client_order_tracker import ClientOrderTracker
-from hummingbot.connector.exchange.ascend_ex import ascend_ex_constants as CONSTANTS
-from hummingbot.connector.exchange.ascend_ex import ascend_ex_utils
+from hummingbot.connector.exchange.ascend_ex import ascend_ex_constants as CONSTANTS, ascend_ex_utils
 from hummingbot.connector.exchange.ascend_ex.ascend_ex_auth import AscendExAuth
 from hummingbot.connector.exchange.ascend_ex.ascend_ex_order_book_tracker import AscendExOrderBookTracker
 from hummingbot.connector.exchange.ascend_ex.ascend_ex_user_stream_tracker import AscendExUserStreamTracker
 from hummingbot.connector.exchange_py_base import ExchangePyBase
 from hummingbot.connector.trading_rule import TradingRule
+from hummingbot.core.api_throttler.async_throttler import AsyncThrottler
 from hummingbot.core.clock import Clock
 from hummingbot.core.data_type.cancellation_result import CancellationResult
+from hummingbot.core.data_type.common import OpenOrder
 from hummingbot.core.data_type.in_flight_order import InFlightOrder, OrderState, OrderUpdate
 from hummingbot.core.data_type.limit_order import LimitOrder
 from hummingbot.core.data_type.order_book import OrderBook
-from hummingbot.core.event.events import (
-    OrderType,
-    TradeFee,
-    TradeType
-)
-from hummingbot.core.api_throttler.async_throttler import AsyncThrottler
-from hummingbot.core.data_type.common import OpenOrder
+from hummingbot.core.data_type.trade_fee import AddedToCostTradeFee
+from hummingbot.core.event.events import OrderType, TradeType
 from hummingbot.core.network_iterator import NetworkStatus
 from hummingbot.core.utils.async_utils import safe_ensure_future, safe_gather
 from hummingbot.logger import HummingbotLogger
@@ -205,8 +201,7 @@ class AscendExExchange(ExchangePyBase):
         when it disconnects.
         :param saved_states: The saved tracking_states.
         """
-        for data in saved_states.values():
-            self._in_flight_order_tracker.start_tracking_order(InFlightOrder.from_json(data))
+        self._in_flight_order_tracker.restore_tracking_states(tracking_states=saved_states)
 
     def supported_order_types(self) -> List[OrderType]:
         """
@@ -347,6 +342,7 @@ class AscendExExchange(ExchangePyBase):
         headers = {
             **self._ascend_ex_auth.get_headers(),
             **self._ascend_ex_auth.get_auth_headers("info"),
+            **self._ascend_ex_auth.get_hb_id_headers(),
         }
         url = f"{CONSTANTS.REST_URL}/info"
         response = await self._shared_client.get(url, headers=headers)
@@ -398,10 +394,14 @@ class AscendExExchange(ExchangePyBase):
                 **self._ascend_ex_auth.get_auth_headers(
                     path_url if force_auth_path_url is None else force_auth_path_url
                 ),
+                **self._ascend_ex_auth.get_hb_id_headers(),
             }
         else:
             url = f"{CONSTANTS.REST_URL}/{path_url}"
-            kwargs["headers"] = self._ascend_ex_auth.get_headers()
+            kwargs["headers"] = {
+                **self._ascend_ex_auth.get_headers(),
+                **self._ascend_ex_auth.get_hb_id_headers(),
+            }
 
         if method == "get":
             async with self._throttler.execute_task(path_url):
@@ -876,7 +876,8 @@ class AscendExExchange(ExchangePyBase):
             order_side: TradeType,
             amount: Decimal,
             price: Decimal = s_decimal_NaN,
-    ) -> TradeFee:
+            is_maker: Optional[bool] = None
+    ) -> AddedToCostTradeFee:
         """For more information: https://ascendex.github.io/ascendex-pro-api/#place-order."""
         trading_pair = f"{base_currency}-{quote_currency}"
         trading_rule = self._trading_rules[trading_pair]
@@ -886,7 +887,7 @@ class AscendExExchange(ExchangePyBase):
                 fee_percent = trading_rule.commission_reserve_rate
         elif trading_rule.commission_type == AscendExCommissionType.BASE:
             fee_percent = trading_rule.commission_reserve_rate
-        return TradeFee(percent=fee_percent)
+        return AddedToCostTradeFee(percent=fee_percent)
 
     async def _iter_user_event_queue(self) -> AsyncIterable[Dict[str, any]]:
         while True:

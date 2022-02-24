@@ -13,23 +13,35 @@ cdef class CrossExchangeMarketMakingStrategy(StrategyBase):
         bint _all_markets_ready
         bint _active_order_canceling
         bint _adjust_orders_enabled
-        bint _top_depth_bias_switch
         dict _anti_hysteresis_timers
         object _min_profitability
-        object _td_bias_min
+        object _third_market
         object _order_size_taker_volume_factor
         object _order_size_taker_balance_factor
         object _order_size_portfolio_ratio_limit
+        object _order_size_maker_balance_factor
+        object _triangular_switch
         object _order_amount
-        object _volatility_pct
-        object _volatility_timer
+        object _target_base_balance
+        object _slippage_buffer_fix
+        object _waiting_time
+        object _fix_counter
+        bint _keep_target_balance
+        bint _filled_order_delay
+        object _filled_order_delay_seconds
+        object _filled_order_delay_timer
         object _cancel_order_threshold
+        object _triangular_arbitrage
         object _top_depth_tolerance
         object _top_depth_tolerance_taker
         double _anti_hysteresis_duration
         double _status_report_interval
         double _last_timestamp
+        object _cancel_timer
         double _limit_order_min_expiration
+        object _counter
+        bint _cancel_order_timer
+        object _cancel_order_timer_seconds
         dict _order_fill_buy_events
         dict _order_fill_sell_events
         dict _suggested_price_samples
@@ -40,19 +52,14 @@ cdef class CrossExchangeMarketMakingStrategy(StrategyBase):
         object _taker_to_maker_base_conversion_rate
         object _taker_to_maker_quote_conversion_rate
         object _slippage_buffer
-        object _volatility_buffer_size
-        object _avg_vol
         object _min_order_amount
         bint _hb_app_notification
         list _maker_order_ids
         double _last_conv_rates_logged
-    
+
     cdef c_process_market_pair(self,
                                object market_pair,
                                list active_ddex_orders)
-
-    cdef object bias_topdepth_price(self,object market_pair,bint is_bid)
-    
     cdef c_check_and_hedge_orders(self,
                                   object market_pair)
     cdef object c_get_order_size_after_portfolio_ratio_limit(self,
@@ -73,8 +80,7 @@ cdef class CrossExchangeMarketMakingStrategy(StrategyBase):
     cdef bint c_check_if_still_profitable(self,
                                           object market_pair,
                                           LimitOrder active_order,
-                                          object current_hedging_price,
-                                          object topdepth_price)
+                                          object current_hedging_price)
     cdef bint c_check_if_sufficient_balance(self,
                                             object market_pair,
                                             LimitOrder active_order)
@@ -91,13 +97,29 @@ cdef class CrossExchangeMarketMakingStrategy(StrategyBase):
                                              object market_pair)
     cdef c_take_suggested_price_sample(self,
                                        object market_pair)
+
+    cdef c_balance_fix_fix(self, market_pair)
+
     cdef c_check_and_create_new_orders(self,
                                        object market_pair,
                                        bint has_active_bid,
                                        bint has_active_ask)
+
+    cdef c_cancel_all_maker_limit_orders(self, market_pair)
+
+    cdef c_cancel_all_taker_limit_orders(self, market_pair)
+
+
+    cdef c_balance_fix_check(self, market_pair)
+
+    cdef c_check_available_balance(self, is_buy: bool, market_pair)
+
+    cdef c_place_fixing_order(self, is_maker: bool, is_buy: bool, market_pair)
+
     cdef str c_place_order(self,
                            object market_pair,
                            bint is_buy,
-                           bint is_maker,
+                           market,
+                           bint record_maker,
                            object amount,
                            object price)
